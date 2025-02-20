@@ -1,0 +1,26 @@
+<html>
+    <head>
+        <title>Weather Station</title>
+        <link rel="stylesheet" href="../style.css" type="text/css"/>
+    </head>
+    <body>
+        <div class="topnav">
+            <a href="/home">Home</a>
+            <a class="#active" href="/weather_image">Images</a>
+            <a href="#weather">Weather</a>
+            </div>
+            <h1>Latest GOES Imagery</h1>
+            <div class="custom-select" >
+            <select>
+                <option value="geocolor">GeoColor</option>
+                <option value="glm-extent3">GLM FED3+GeoColor</option>
+                <option value="airmass">AirMass RGB</option>
+                <option value="firetemperature-rgb">FireTemperature</option>
+            </select>
+        </div>
+
+          <!--<canvas id="canvas" width=100%></canvas>-->
+          <image id="img" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/FD/GEOCOLOR/5424x5424.jpg" height=900vh></image>
+          <script src="selection.js"></script>
+        </body>
+</html>
