@@ -1,4 +1,4 @@
-var x, i, j, l, ll, selElmnt, a, b, c;
+let x, i, j, l, ll, selElmnt, a, b, c;
 /* Look for any elements with the class "custom-select": */
 x = document.getElementsByClassName("custom-select");
 l = x.length;
@@ -26,7 +26,7 @@ for (i = 0; i < l; i++) {
         sl = s.length;
         h = this.parentNode.previousSibling;
         for (i = 0; i < sl; i++) {
-          if (s.options[i].innerHTML == this.innerHTML) {
+          if (s.options[i].innerHTML === this.innerHTML) {
             s.selectedIndex = i;
             h.innerHTML = this.innerHTML;
             y = this.parentNode.getElementsByClassName("same-as-selected");
@@ -62,7 +62,7 @@ function closeAllSelect(elmnt) {
   xl = x.length;
   yl = y.length;
   for (i = 0; i < yl; i++) {
-    if (elmnt == y[i]) {
+    if (elmnt === y[i]) {
       arrNo.push(i)
     } else {
       y[i].classList.remove("select-arrow-active");

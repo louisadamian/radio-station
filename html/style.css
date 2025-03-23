@@ -17,8 +17,19 @@ html * {
  a:hover{
    color: #014dbf;
  }
+ h1, h3{
+   color: white;
+ }
+.title {
+  display: inline;
+}
+.title-weather{
+    display: inline;
+    padding-left: 5em;
+ }
 .topnav{
-/*   background-color: #101010; */
+   /*background-color: #101010;*/
+  /*margin: 5em;*/
 }
 .topnav a{
   color: black;
@@ -32,7 +43,9 @@ html * {
 /*   background-color:  */
   color: #0161c6;;
 }
-
+.link {
+  padding: 0.25em;
+}
 .custom-select {
   position: relative;
   font-family: Arial;
@@ -98,7 +111,7 @@ html * {
 body{
     background-color: #1a1a1a;
   }
-  a, p, h1{
+  a, p, h1, h3{
     color: white;
   }
   .topnav a{

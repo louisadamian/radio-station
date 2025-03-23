@@ -1,6 +1,5 @@
 #!/bin/bash
 deps="nginx"
-# shellcheck disable=SC2046
 CHOICES=$(whiptail --title "Install Radio Station Options" \
   --checklist "Choose something" 10 40 4 \
   "ADS-B" "Airplane tracking" OFF \
@@ -16,25 +15,26 @@ if [[  -z "${#CHOICES[@]}" ]]; then
 fi
 ADSB=false
 GOES=false
-mkdir -p $HOME/dev && cd $HOME/dev
+mkdir -p "$HOME/dev" && cd "$HOME/dev" || exit
 for CHOICE in $CHOICES; do
     case "$CHOICE" in
     "ADS-B")
+        ADSB=true
         wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.2_all.deb
         sudo dpkg -i flightaware-apt-repository_1.2_all.deb
         deps="${deps} dump1090-fa dump978-fa"
     ;;
     "GOES")
+        GOES=true
         deps="${deps} git build-essential cmake libopencv-dev libproj-dev zlib1g-dev"
-        (git clone https://github.com/pietern/goestools --recersive && cd goestools) || (echo  failed to download goestools; exit 1)
-        mkdir -p build && cd build
+        (git clone https://github.com/pietern/goestools --recursive && cd goestools) || (echo  failed to download goestools; exit 1)
+        mkdir -p build && cd build || exit
         cmake ../ -DCMAKE_INSTALL_PREFIX=/usr/local
 #        if [ -z "$ls ./src/goesdec"] || [-z`` "$ls ./src/goesproc"]; then
 #            echo "failed to install goestools"
 #            exit 1
 #        fi
-        ls ./src/goesdec ./src/goesproc
-        make -j4
+        make -j
         sudo make install
     ;;
     esac
@@ -48,4 +48,5 @@ if $ADSB; then
 fi
 if $GOES; then
     echo "configuring goes-tools"
+
 fi
