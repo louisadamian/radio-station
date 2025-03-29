@@ -1,30 +1,28 @@
 <html>
     <head>
         <title>Weather Station</title>
-        <link rel="stylesheet" href="../style.css" type="text/css"/>
+        <link rel="stylesheet" href="/css/style.css" type="text/css"/>
     </head>
     <body>
         <div class="topnav">
-            <a class="link" href="/home">Home</a>
+            <a class="link" href="/">Home</a>
             <a class="#active" href="/weather_image">Images</a>
             <a class="link" href="#weather">Weather</a>
             </div>
             <h1 class="title">Latest GOES Imagery</h1>
-            <h3 class="title-weather">Weather: 24&deg;F light snow  </h3>
-            <div class="custom-select" >
+            <h3 class="title-weather">Weather: 24&deg;F light snow 🌨️</h3>
+<!--            <div class="custom-select" >-->
                 <label>
-                    <select>
+                    <select id="goes-select" onchange="onImgSelect()">
                         <option value="geocolor">GeoColor</option>
                         <option value="glm-extent3">GLM FED3+GeoColor</option>
                         <option value="airmass">AirMass RGB</option>
                         <option value="firetemperature-rgb">FireTemperature</option>
                     </select>
                 </label>
-            </div>
-
-            <!--<canvas id="canvas" width=100%></canvas>-->
-            <image id="img" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/FD/GEOCOLOR/5424x5424.jpg" height=900vh></image>
-            <script src="selection.js"></script>
-            <script src="weather.js"></script>
+<!--            </div>-->
+            <image id="goesImg" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/CONUS/GEOCOLOR/5000x3000.jpg" height=900vh></image>
+            <script src="/weather/selection.js"></script>
+            <script src="/weather/weather.js"></script>
         </body>
 </html>
