@@ -1,48 +1,56 @@
-use chrono::{Datelike, SecondsFormat, Timelike, Utc};
+use chrono::{DateTime, Datelike, SecondsFormat, Timelike, Utc};
+use clap::Parser;
 use metar::{
     CloudLayer, CloudType, Metar, Pressure, VertVisibility, Visibility, WindDirection, WindSpeed,
 };
 use serde::Serialize;
 use std::cmp::PartialEq;
-use std::fs::{DirEntry, File};
+use std::env;
+use std::fs::{self, DirEntry, File};
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::Command;
-use std::{env, fs};
-use toml;
 use std::str::FromStr;
-use std::time::Duration;
+use toml;
 
 fn degrees_c_to_f(temp: f64) -> f64 {
     temp * (9.0 / 5.0) + 32.0
 }
 fn kts_to_kph(speed: f64) -> f64 {
-    speed * 1.852
+    speed * 463.0 / 250.0
 }
 fn kph_to_kts(speed: f64) -> f64 {
-    speed * 0.53996
+    speed * 250.0 / 463.0
 }
 fn mps_to_kts(speed: f64) -> f64 {
-    speed * 1.943844
+    speed * 900.0 / 463.0
 }
 fn mps_to_kph(speed: f64) -> f64 {
     speed * 3.6
 }
 fn ft_to_m(length: f64) -> f64 {
-    length * 3.28084
+    length * 381.0 / 1250.0
 }
 fn m_to_mi(length: f64) -> f64 {
-    length / 1609.344
+    length * 125.0 / 201168.0
 }
 fn mi_to_m(length: f64) -> f64 {
-    length * 1609.344
+    length * 201168.0 / 125.0
 }
+fn inhg_to_hpa(press: f64) -> f64 {
+    press * 33.86388640341
+}
+fn hpa_to_inhg(press: f64) -> f64 {
+    press / 33.86388640341
+}
+
 fn parse_visibility(vis: Visibility, units: DisplayUnits) -> Option<f64> {
     if units != DisplayUnits::Metric {
-        return match vis {
+        match vis {
             Visibility::CAVOK => None,
             Visibility::Metres(m) => Option::from(m_to_mi(m as f64)),
             Visibility::StatuteMiles(mi) => Option::from(mi as f64),
-        };
+        }
     } else {
         match vis {
             Visibility::CAVOK => None,
@@ -50,12 +58,6 @@ fn parse_visibility(vis: Visibility, units: DisplayUnits) -> Option<f64> {
             Visibility::StatuteMiles(mi) => Option::from(f64::from(mi)),
         }
     }
-}
-fn inhg_to_hpa(press: f64) -> f64 {
-    press * 33.863889532611
-}
-fn hpa_to_inhg(press: f64) -> f64 {
-    press * 0.02952998057228
 }
 fn parse_speed_kts(windspeed: WindSpeed) -> f64 {
     match windspeed {
@@ -73,11 +75,10 @@ fn parse_speed_kph(windspeed: WindSpeed) -> f64 {
         WindSpeed::KilometresPerHour(kph) => f64::from(kph),
     }
 }
-
 fn parse_pressure_hpa(press: Pressure) -> f64 {
     match press {
         Pressure::Hectopascals(hpa) => hpa as f64,
-        Pressure::InchesOfMercury(inhg) => inhg_to_hpa(f64::from(inhg)),
+        Pressure::InchesOfMercury(inhg) => inhg_to_hpa(f64::from(inhg)).round(),
     }
 }
 fn parse_pressure_inhg(press: Pressure) -> f64 {
@@ -109,6 +110,7 @@ fn parse_vert_visibility(vert_visibility: Option<VertVisibility>) -> Option<u32>
         },
     }
 }
+
 #[derive(Debug, Serialize, Clone)]
 struct CloudData {
     cloud_type: String,
@@ -230,7 +232,32 @@ fn parse_metar(cur_metar: Metar, units: DisplayUnits) -> String {
         report += format!("{:.0}ºC ", f64::from(*cur_metar.temperature.unwrap())).as_str();
     }
     if cur_metar.weather.len() == 0 {
-        report += "skies clear "
+        if cur_metar.cloud_layers.len() == 0 {
+            report += "skies clear "
+        } else {
+            let mut clouds: i32 = 0;
+            for cloud in cur_metar.cloud_layers {
+                let c = match cloud {
+                    CloudLayer::Few(_, _) => 1,
+                    CloudLayer::Scattered(_, _) => 2,
+                    CloudLayer::Broken(_, _) => 3,
+                    CloudLayer::Overcast(_, _) => 4,
+                    CloudLayer::Unknown(_, _) => 0,
+                };
+                if c > clouds {
+                    clouds = c;
+                }
+            }
+            match clouds {
+                0 => report += "cloudy ",
+                1 => report += "Mostly Clear ",
+                2 => report += "Partly Cloudy ",
+                3 => report += "Mostly Cloudy ",
+                4 => report += "overcast ",
+
+                _ => {}
+            }
+        }
     } else {
         for weather in cur_metar.weather.iter() {
             report += format!("{:?}", weather.intensity).as_str();
@@ -277,27 +304,32 @@ fn parse_metar(cur_metar: Metar, units: DisplayUnits) -> String {
     }
     report
 }
-
-fn write_report(metar: Metar, units: DisplayUnits) -> WeatherReport {
-    let t = Utc::now()
+fn parse_time(metar: Metar) -> DateTime<Utc> {
+    Utc::now()
         .with_day(metar.time.date as u32)
         .unwrap()
         .with_hour(metar.time.hour as u32)
         .unwrap()
+        .with_minute(metar.time.minute as u32)
+        .unwrap()
         .with_second(0)
-        .unwrap();
-    let time = toml::value::Datetime::from_str(t.to_rfc3339_opts(SecondsFormat::Secs, true).as_str()).unwrap();
+        .unwrap()
+}
+fn write_report(metar: Metar, units: DisplayUnits) -> WeatherReport {
+    let t = parse_time(metar.clone());
+    let time =
+        toml::value::Datetime::from_str(t.to_rfc3339_opts(SecondsFormat::Secs, true).as_str())
+            .unwrap();
 
     let rep;
     match units {
-
         DisplayUnits::Metric => {
-            rep = WeatherReport{
+            rep = WeatherReport {
                 units,
                 wind_speed: parse_speed_kph(metar.wind.speed.unwrap().clone()),
                 wind_gust: match metar.wind.gusting {
                     None => None,
-                    Some(speed)=>Some(parse_speed_kph(speed))
+                    Some(speed) => Some(parse_speed_kph(speed)),
                 },
                 wind_dir: parse_wind_dir(metar.wind.dir.unwrap().clone()),
                 wind_status: parse_wind_status(metar.wind.dir.unwrap().clone()),
@@ -308,11 +340,11 @@ fn write_report(metar: Metar, units: DisplayUnits) -> WeatherReport {
                 visibility: parse_visibility(metar.visibility.unwrap().clone(), units),
                 vert_visibility: match parse_vert_visibility(metar.vert_visibility) {
                     Some(vis) => Some(ft_to_m(vis as f64) as u32),
-                    None => None
+                    None => None,
                 },
-                remark: metar.remarks.unwrap(),
+                remark: metar.remarks.unwrap().trim().replace("  ", " ").to_string(),
                 station: metar.station,
-                time:time
+                time,
             }
         }
         DisplayUnits::Aviation => {
@@ -358,10 +390,13 @@ fn write_report(metar: Metar, units: DisplayUnits) -> WeatherReport {
             }
         }
         _ => {
-            rep=WeatherReport{
+            rep = WeatherReport {
                 units,
                 wind_speed: parse_speed_kts(metar.wind.speed.unwrap().clone()),
-                wind_gust: Option::from(parse_speed_kts(metar.wind.speed.unwrap().clone())),
+                wind_gust: match metar.wind.gusting {
+                    None => None,
+                    Some(speed) => Some(parse_speed_kts(speed.clone())),
+                },
                 wind_dir: parse_wind_dir(metar.wind.dir.unwrap().clone()),
                 wind_status: parse_wind_status(metar.wind.dir.unwrap().clone()),
                 temp: *metar.dewpoint.unwrap(),
@@ -378,19 +413,24 @@ fn write_report(metar: Metar, units: DisplayUnits) -> WeatherReport {
     }
     rep
 }
-fn main() {
-
-    let icao = "KJFK";
-    let mut p = env::current_dir()
+fn download_metars() -> PathBuf {
+    let p = env::current_dir().unwrap().join("txtmin20");
+    let zip = env::current_dir().unwrap().join("txtmin20.zip");
+    // println!("zip: {:?}", zip);
+    let age = fs::metadata(zip.clone())
         .unwrap()
-        .join("txtmin20")
-        .to_str()
+        .modified()
         .unwrap()
-        .to_string();
-    let age = fs::metadata(&p).unwrap().modified().unwrap().elapsed().unwrap();
-    if  age > Duration::from_secs(60 * 20) {
-        print!("downloading latest data");
-        Command::new("rm").args(&["-rf", "txtmin20.zip"]);
+        .elapsed()
+        .unwrap();
+    println!("age: {:?}", age);
+    if age.as_secs() > 60 * 20 {
+        println!("downloading latest data");
+        let c = Command::new("rm")
+            .args(&["-rf", zip.to_str().unwrap()])
+            .output()
+            .unwrap();
+        println!("{}", String::from_utf8_lossy(&c.stdout));
         Command::new("wget")
             .arg("https://tgftp.nws.noaa.gov/SL.us008001/CU.EMWIN/DF.xt/DC.gsatR/OPS/txtmin20.zip")
             .output()
@@ -399,9 +439,7 @@ fn main() {
             .args(["txtmin20.zip", "-dtxtmin20"])
             .output()
             .unwrap();
-
     }
-
     let l = fs::read_dir(p.clone())
         .unwrap()
         .map(|f| f.unwrap())
@@ -413,36 +451,117 @@ fn main() {
             .output()
             .unwrap();
     }
-    p = env::current_dir()
-        .unwrap()
-        .join("txtmin20")
-        .to_str()
-        .unwrap()
-        .to_string();
-    let metars = get_metars(icao.to_string(), p);
-    if metars.len() == 0 {
-        return;
+    p
+}
+fn __parse_time(metar: String, icao: String) -> Option<DateTime<Utc>> {
+    let mut str = metar
+        .clone()
+        .replace(icao.as_str(), "")
+        .trim()
+        .to_string()
+        .replace("\n", "")
+        .replace("\r", "");
+    let _ = str.split_off(7);
+    let days = str[..2].to_string().parse::<u32>();
+    let hours = str[2..4].to_string().parse::<u32>();
+    let minutes = str[4..6].to_string().parse::<u32>();
+    if days.is_err() || hours.is_err() || minutes.is_err() {
+        return None;
     }
-    let cur_metar = Metar::parse(metars[0].to_string()).unwrap();
-    let rep = write_report(cur_metar.clone(), DisplayUnits::Aviation);
-    let t = Utc::now()
-        .with_day(cur_metar.time.date as u32)
-        .unwrap()
-        .with_hour(cur_metar.time.hour as u32)
-        .unwrap().with_minute(cur_metar.time.minute as u32)
-        .unwrap()
-        .with_second(0)
-        .unwrap();
-    let filename = "weather_".to_string()
-        + icao
-        + "_"
-        + t.to_rfc3339_opts(SecondsFormat::Secs, true).as_str()
-        + ".toml";
-    println!("{}", filename);
-    let toml_file = File::create(filename);
+    Some(
+        Utc::now()
+            .with_day(days.unwrap())
+            .unwrap()
+            .with_hour(hours.unwrap())
+            .unwrap()
+            .with_minute(minutes.unwrap())
+            .unwrap(),
+    )
+}
+fn __max_idx(arr: Vec<DateTime<Utc>>) -> usize {
+    let mut i = 0;
+    for (j, &val) in arr.iter().enumerate() {
+        if val > arr[j] {
+            i = j;
+        }
+    }
+    i
+}
+
+fn update_latest(path: String, icao: String, units: DisplayUnits) -> Option<(String, String)> {
+    let metars = get_metars(icao.to_string(), path);
+    if metars.len() == 0 {
+        println!(
+            "No weather for {:} is available in the last 20 minutes",
+            icao
+        );
+        return None;
+    }
+    let mut time = Vec::<DateTime<Utc>>::new();
+    for metar in metars.clone() {
+        let t = __parse_time(metar, icao.clone());
+        if t.is_some() {
+            time.push(t.unwrap());
+        }
+    }
+    let latest = metars[__max_idx(time.clone())].clone();
+    let cur_metar = Metar::parse(latest).unwrap();
+    let rep = write_report(cur_metar.clone(), units);
+    let t = parse_time(cur_metar.clone());
+    let filename = format!(
+        "weather_{}_{}.toml",
+        icao,
+        t.to_rfc3339_opts(SecondsFormat::Secs, true)
+    );
+    let toml_file = File::create(filename.clone());
     toml_file
         .unwrap()
         .write_all(toml::to_string(&rep).unwrap().as_bytes())
         .unwrap();
-    println!("{}", parse_metar(cur_metar, DisplayUnits::Aviation));
+    Some((filename, parse_metar(cur_metar, units)))
+}
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, value_name = "units")]
+    units: String,
+    #[arg(short, long, value_name = "icao")]
+    icao: Option<String>,
+    #[arg(short, long)]
+    city_name: Option<String>,
+    #[arg(short = 'm', long, value_name = "message")]
+    message: bool,
+}
+
+fn main() {
+    let args = Args::parse();
+    let units;
+    match args.units.to_lowercase().as_str() {
+        "metric" => units = DisplayUnits::Metric,
+        "imperial" => units = DisplayUnits::Imperial,
+        "nautical" => units = DisplayUnits::Nautical,
+        "aviation" => units = DisplayUnits::Aviation,
+        _ => {
+            println!("invalid units given");
+            return;
+        }
+    }
+    if args.icao.is_none() && args.city_name.is_none() {
+        println!("please enter a City Name or Airport ICAO code");
+    }
+    if args.icao.is_some() {
+        println!("getting weather for {:}", args.icao.clone().unwrap());
+        let icao = args.icao.clone().unwrap();
+        let p = download_metars();
+        let (filename, report) =
+            update_latest(p.to_str().unwrap().to_string(), icao.clone(), units).unwrap();
+        println!("wrote {}", filename);
+        println!("{}", report);
+        if args.message {
+            File::create(format!("report_{}.txt", filename))
+                .unwrap()
+                .write_all(report.as_bytes())
+                .unwrap();
+        }
+    }
 }
