@@ -1,0 +1,29 @@
+[package]
+name = "radio-station"
+version = "0.1.0-alpha.1"
+edition = "2024"
+
+[dependencies]
+actix-files = "0.6.6"
+actix-web = "4.10.2"
+actix-ws = "0.3.0"
+futures-util = "0.3.31"
+chrono = "0.4.40"
+clap = { version = "4.5.34", features = ["derive"], optional = true }
+serde = { version = "1.0.219", features = ["derive"] }
+toml = "0.8.20"
+metar = "0.7.7"
+log = "0.4.27"
+reqwest = { version = "0.12.15", features = ["stream"] }
+tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
+
+
+[features]
+default=[]
+metar-bin=["dep:clap"]
+
+
+[[bin]]
+name = "metar-parser"
+path = "src/metar.rs"
+required-features = ["metar-bin"]
