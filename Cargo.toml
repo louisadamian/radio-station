@@ -9,13 +9,15 @@ actix-web = "4.10.2"
 actix-ws = "0.3.0"
 futures-util = "0.3.31"
 chrono = "0.4.40"
-clap = { version = "4.5.34", features = ["derive"], optional = true }
+clap = { version = "4.5.35", features = ["derive"], optional = true }
 serde = { version = "1.0.219", features = ["derive"] }
 toml = "0.8.20"
 metar = "0.7.7"
 log = "0.4.27"
 reqwest = { version = "0.12.15", features = ["stream"] }
 tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
+tracing = "0.1.41"
+bytestring = "1.4.0"
 
 
 [features]
