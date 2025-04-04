@@ -1,5 +1,5 @@
 use actix_files::Files;
-use actix_web::{App, Error, HttpRequest, HttpResponse, HttpServer, rt, web};
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use actix_ws::AggregatedMessage;
 use bytestring::ByteString;
 use futures_util::StreamExt as _;
@@ -24,7 +24,7 @@ async fn ws(req: HttpRequest, body: web::Payload) -> Result<HttpResponse, actix_
         let mut wait = interval(Duration::from_secs(5));
         loop {
             wait.tick().await;
-            weather_brief_sender.send(messages[i].clone()).unwrap();
+            weather_brief_sender.send(messages[i].clone());
             i = (i + 1) % messages.len();
         }
     });
@@ -33,21 +33,20 @@ async fn ws(req: HttpRequest, body: web::Payload) -> Result<HttpResponse, actix_
     actix_web::rt::spawn(async move {
         let mut wait = actix_web::rt::time::interval(Duration::from_secs(5));
         let mut w = weather_brief_receiver.clone();
+        session2.text(ByteString::from(w.borrow_and_update().clone())).await;
         loop {
-            wait.tick().await;
             if w.has_changed().unwrap() {
                 let s = w.borrow_and_update().clone();
-                session2.text(ByteString::from(s)).await.unwrap();
+                session2.text(ByteString::from(s)).await.expect("TODO: panic message"); //.unwrap();
             }
-
             if session2.ping(b"").await.is_err() {
                 break;
             }
-
             if Instant::now().duration_since(*alive2.lock().await) > Duration::from_secs(10) {
                 let _ = session2.close(None).await;
                 break;
             }
+            wait.tick().await;
         }
     });
 
@@ -75,8 +74,8 @@ pub async fn web() -> std::io::Result<()> {
     println!("starting server at http://localhost:8080");
     HttpServer::new(|| {
         App::new()
-            .service(Files::new("/", "static").index_file("index.html"))
             .route("/ws", web::get().to(ws))
+            .service(Files::new("/", "static").index_file("index.html"))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
