@@ -9,12 +9,13 @@ use metar::{
 use reqwest;
 use serde::Serialize;
 use std::cmp::PartialEq;
+use std::env;
 use std::fs::{self, DirEntry, File};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
-use std::env;
+use tokio::io::AsyncWriteExt;
 use toml;
 
 fn degrees_c_to_f(temp: f64) -> f64 {
@@ -226,7 +227,6 @@ fn parse_metar_brief(cur_metar: Metar, units: DisplayUnits) -> String {
     if units == DisplayUnits::Nautical || units == DisplayUnits::Imperial {
         report += format!(
             "{:.0}ºF ",
-            // uom::si::thermodynamic_temperature::degree_celsius.conversion()
             degrees_c_to_f(f64::from(*cur_metar.temperature.unwrap()))
         )
         .as_str();
@@ -417,16 +417,10 @@ fn write_report(metar: Metar, units: DisplayUnits) -> WeatherReport {
     rep
 }
 
-async fn download_files(url: &str, path: PathBuf) -> Result<(), Box<dyn std::error::Error>>  {
-    use tokio::{
-        io::{ AsyncWriteExt },
-        fs::{ File },
-    };
-    let mut file = File::create(path).await?;
+async fn download_files(url: &str, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    let mut file = tokio::fs::File::create(path).await?;
     // log::info!("Downloading {}...", url);
-    let mut stream = reqwest::get(url)
-        .await?
-        .bytes_stream();
+    let mut stream = reqwest::get(url).await?.bytes_stream();
     while let Some(chunk_result) = stream.next().await {
         let chunk = chunk_result?;
         file.write_all(&chunk).await?;
@@ -527,10 +521,7 @@ pub fn update_metar(
 ) -> Option<(String, String)> {
     let metars = get_metars(icao.to_string(), path);
     if metars.len() == 0 {
-        println!(
-            "No weather for {:} is available in the latest report",
-            icao
-        );
+        println!("No weather for {:} is available in the latest report", icao);
         return None;
     }
     let mut time = Vec::<DateTime<Utc>>::new();
@@ -572,9 +563,9 @@ pub fn update_metar(
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[clap(short, long, value_name = "dir")]
+    #[clap(short = 'd', long, value_name = "dir")]
     dir: Option<String>,
-    #[arg(short='u', long, value_name = "units")]
+    #[arg(short = 'u', long, value_name = "units")]
     units: String,
     #[arg(short, long, value_name = "icao")]
     icao: Option<String>,
@@ -616,7 +607,6 @@ async fn main() {
 
         if !path.clone().exists() {
             tokio::fs::create_dir(path.clone()).await.unwrap();
-            // fs::create_dir(path.clone()).unwrap();
         }
         if args.use_web {
             path = download_metars(path).await;
@@ -629,9 +619,7 @@ async fn main() {
         };
         let res = update_metar(path, icao.clone(), units, output_dir, true);
         match res {
-            None => {
-
-            }
+            None => {}
             Some((filename, brief)) => {
                 println!("wrote {}", filename);
                 println!("{}", brief);
