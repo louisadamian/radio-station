@@ -1,5 +1,4 @@
-const weatherText = document.getElementsByClassName("weather-report")
-weatherText.innerHTML = "Weather: 60&deg;F partly cloudy &#9925;";
+document.getElementById("weather-report").innerHTML = "";
 /** @type {WebSocket | null} */
 let socket = null;
 

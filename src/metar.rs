@@ -200,7 +200,7 @@ fn get_metars(icao: String, dir_path: PathBuf) -> Vec<String> {
     let dir = fs::read_dir(dir_path).unwrap();
     for filepath in dir {
         let f_name = filepath.unwrap().path();
-        if !f_name.extension().unwrap().eq_ignore_ascii_case("txt") {
+        if !f_name.is_file() || !f_name.extension().unwrap().eq_ignore_ascii_case("txt") {
             continue;
         }
         let text = fs::read_to_string(f_name).unwrap();

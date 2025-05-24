@@ -21,8 +21,8 @@ bytestring = "1.4.0"
 
 
 [features]
-default=[]
 metar-bin=["dep:clap"]
+default=["metar-bin"]
 
 
 [[bin]]

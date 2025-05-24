@@ -58,6 +58,11 @@ async fn ws(req: HttpRequest, body: web::Payload) -> Result<HttpResponse, actix_
                         return;
                     }
                 }
+                AggregatedMessage::Text(msg)=>{
+                    if msg == "wUp"{
+                        // session.text(ByteString::from(w.borrow_and_update().clone())).await;
+                    }
+                }
                 AggregatedMessage::Pong(_) => {
                     *alive.lock().await = Instant::now();
                 }

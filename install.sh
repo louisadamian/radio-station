@@ -4,6 +4,8 @@ CHOICES=$(whiptail --title "Install Radio Station Options" \
   --checklist "Choose something" 10 40 4 \
   "ADS-B" "Airplane tracking" OFF \
   "GOES" "NOAA Satellite Weather" OFF \
+  "APRS" "" OFF \
+  "AIS" "Ship Tracking" OFF \
    3>&1 1>&2 2>&3)
 exitstatus=$?
 if [ $exitstatus != 0 ]; then
@@ -15,6 +17,7 @@ if [[  -z "${#CHOICES[@]}" ]]; then
 fi
 ADSB=false
 GOES=false
+APRS=false
 mkdir -p "$HOME/dev" && cd "$HOME/dev" || exit
 for CHOICE in $CHOICES; do
     case "$CHOICE" in
@@ -37,6 +40,10 @@ for CHOICE in $CHOICES; do
         make -j
         sudo make install
     ;;
+    "APRS")
+        APRS=true
+        deps"$deps direwolf"
+
     esac
 done
 sudo apt update
@@ -48,5 +55,7 @@ if $ADSB; then
 fi
 if $GOES; then
     echo "configuring goes-tools"
-
+fi
+if $APRS; then
+   echo "configuring direwolf"
 fi
