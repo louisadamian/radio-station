@@ -2,12 +2,19 @@
     <head>
         <title>Weather Station</title>
         <link rel="stylesheet" href="/css/style.css" type="text/css"/>
+        <style>
+            img {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                width: 40%;
+            }
+        </style>
     </head>
     <body>
         <div class="topnav">
             <a class="link" href="/">Home</a>
             <a class="#active" href="#weather">Weather</a>
-            </div>
             <h1 class="title">Latest GOES Imagery</h1>
             <h3 class="title-weather">Weather: 24&deg;F light snow 🌨️</h3>
 <!--            <div class="custom-select" >-->
@@ -19,8 +26,11 @@
                         <option value="firetemperature-rgb">FireTemperature</option>
                     </select>
                 </label>
+        </div>
 <!--            </div>-->
-            <image id="goesImg" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/CONUS/GEOCOLOR/5000x3000.jpg" height=900vh></image>
+<!--            <div class="img">-->
+                <image class="image" id="goesImg" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/CONUS/GEOCOLOR/1250x750.jpg" style="width:80%"></image>
+<!--            </div>-->
             <script src="/weather/selection.js"></script>
             <script src="/weather/goes.js"></script>
         </body>

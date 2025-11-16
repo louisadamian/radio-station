@@ -1,0 +1,28 @@
+html, body {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+}
+#map {
+    /* configure the size of the map */
+    width: 80%;
+    height: 100%;
+}
+.sidenav {
+    height: 100%;
+    width: 20%;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    background-color: #323232;
+    overflow-x: hidden;
+    padding-top: 5px;
+}
+
+h2, h3{
+    padding-left: 10pt;
+}
+.layer-label{
+    color: #ffffff;
+}
