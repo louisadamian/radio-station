@@ -1,37 +1,17 @@
 "use strict";
 
-function toggleLayer() {
-
-}
 function createLayers(){
     let layers = new ol.Collection();
-    let adsb_menu = document.getElementById('adsb-menu');
-
     let layers_group = new ol.layer.Group({
         layers: layers,
     });
     layers.push(new ol.layer.Vector({
-        source: new ol.source.Vector({
-            url: "/geojson/US_A2A_refueling.geojson",
-            format: new ol.format.GeoJSON(),
-        }),
-        style: new ol.style.Style({
-            fill: new ol.style.Fill({
-                color : [52, 50, 168, 0.3]
-            }),
-            stroke: new ol.style.Stroke({
-                color: [52, 50, 168, .9],
-                width: 1
-            }),
-        }),
-        name: 'us-a2a',
-        title: 'US A2A refueling',
+        name: 'tfrs',
+        title: 'TFRs',
         type: 'overlay',
         opacity: 1,
         visible: true,
-        zIndex: 20,
-    }));
-    layers.push(new ol.layer.Vector({
+        zIndex: 99,
         source: new ol.source.Vector({
             url: 'https://raw.githubusercontent.com/wiedehopf/tar1090-aux/refs/heads/master/tfrs.geojson',
             format: new ol.format.GeoJSON(),
@@ -46,12 +26,28 @@ function createLayers(){
                 width: 1
             }),
         }),
-        name: 'tfrs',
-        title: 'TFRs',
+
+    }));
+    layers.push(new ol.layer.Vector({
         type: 'overlay',
-        opacity: 1,
-        visible: true,
-        zIndex: 99,
+        title: 'US A2A Refueling',
+        name: 'us-a2a',
+        zIndex: 10,
+        visible: false,
+        source: new ol.source.Vector({
+            url: '/geojson/US_A2A_refueling.geojson',
+            transition: 0,
+            format: new ol.format.GeoJSON()
+        }),
+        style:  new ol.style.Style({
+            fill: new ol.style.Fill({
+                color : [52, 50, 168, 0.3]
+            }),
+            stroke: new ol.style.Stroke({
+                color: [52, 50, 168, .9],
+                width: 1
+            }),
+        }),
     }));
     layers.push(new ol.layer.Vector({
         type: 'overlay',
@@ -92,20 +88,29 @@ function createLayers(){
             }
         }
     }));
+    let adsb_menu = document.getElementById('adsb-menu');
     layers.forEach(layer => {
-        adsb_menu.innerHTML += '<input type="checkbox" id="'+layer.get('name')+'" name="'+layer.get('name')+ '"/> <label class="layer-label">'+layer.get('title')+'</label><br>\n';
-        let box = document.getElementById(layer.get('name'))
-        box.addEventListener('change',function(){layer.setVisible(box.checked)});
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.id = layer.get('name');
+        box.name = layer.get('name');
         box.checked = layer.getVisible();
-
-    });
+        const label = document.createElement('label');
+        label.className = 'layer-label';
+        label.htmlFor = layer.get('name');
+        label.textContent = layer.get('title');
+        adsb_menu.appendChild(box);
+        adsb_menu.appendChild(label);
+        adsb_menu.appendChild(document.createElement('br'));
+        box.addEventListener('change',function(){layer.setVisible(box.checked)});
+    })
     return layers_group;
 }
 
 var map = new ol.Map({
     layers: [
         new ol.layer.Tile({
-            source: new ol.source.OSM()
+            source: new ol.source.OSM(),
         }),
         createLayers(),
     ],
@@ -115,5 +120,37 @@ var map = new ol.Map({
         zoom: 11
     })
 });
+const vectorSource = new ol.source.Vector();
 
+async function loadStations(){
+    const response = await fetch('stations.json');
+    const stations = await response.json();
+    console.log("stations", stations);
+    stations.forEach(station => {
+            console.log(station.callsign);
+            const point = new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat]));
+            const feature = new ol.Feature({
+                geometry: point,
+                callsign: station.callsign,
+                comment: station.packet,
+                timestamp: station.time,
+            });
+            vectorSource.addFeature(feature);
+        })
+        const wxStyle = new ol.style.Style({
+            image: new ol.style.Circle({
+                radius: 7,
+                fill: new ol.style.Fill({ color: 'rgba(18,42,255,0.8)' }),
+                stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 128, 1)', width: 1 })
+            })
+        });
 
+        const vectorLayer = new ol.layer.Vector({
+            visible: true,
+            source: vectorSource,
+            style: wxStyle
+        });
+        map.addLayer(vectorLayer);
+}
+
+loadStations();

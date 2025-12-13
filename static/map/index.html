@@ -6,15 +6,17 @@
   <title>Radio Map</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css" type="text/css">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/map/style.css" type="text/css">
+  <link rel="stylesheet" href="/css/map.css" type="text/css">
 
   <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
 </head>
 <body>
 <div class="sidenav" id="navbar">
-  <a href="/">  <h3>Radio Station</h3></a>
-  <button type="button">layers</button>
+  <a href="/"><h2>Radio Station</h2></a>
+  <div id="sidenav-topnav">
+  </div>
   <div id="adsb-menu">
+    <button class="sidenav-top" type="button", id="layer-button">layers</button>
   </div>
 </div>
 <div id="map" class="map"></div>
@@ -22,5 +24,6 @@
 <div id="attribution" style="padding: 10px;background-color: white;"></div>
 <div id="title"></div>
 <script src="/map/layers.js"></script>
+<script src="/map/control.js"></script>
 </body>
 </html>

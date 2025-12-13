@@ -430,8 +430,8 @@ async fn download_files(url: &str, path: PathBuf) -> Result<(), Box<dyn std::err
     Ok(())
 }
 pub async fn download_metars(dir: PathBuf) -> PathBuf {
-    let out_dir = dir.join("txtmin20");
-    let zip = dir.join("txtmin20.zip");
+    let out_dir = dir.join("../../txtmin20");
+    let zip = dir.join("../../txtmin20.zip");
     let mut download = true;
     if zip.exists() {
         let age = fs::metadata(zip.clone())
@@ -449,7 +449,7 @@ pub async fn download_metars(dir: PathBuf) -> PathBuf {
     }
     if download {
         log::info!("downloading latest data");
-        let zip = dir.join("txtmin20.zip");
+        let zip = dir.join("../../txtmin20.zip");
         download_files(
             "https://tgftp.nws.noaa.gov/SL.us008001/CU.EMWIN/DF.xt/DC.gsatR/OPS/txtmin20.zip",
             zip.clone(),
@@ -578,6 +578,7 @@ struct Args {
     #[arg(short = 'o', long, value_name = "output")]
     output_dir: Option<String>,
 }
+
 #[cfg(feature = "metar-bin")]
 #[tokio::main]
 async fn main() {
@@ -601,7 +602,7 @@ async fn main() {
         println!("getting weather for {:}", args.icao.clone().unwrap());
         let icao = args.icao.clone().unwrap();
         let mut path = match args.dir.clone() {
-            None => env::temp_dir().join("radio-station"),
+            None => env::temp_dir().join(".."),
             Some(p) => PathBuf::from(p),
         };
 

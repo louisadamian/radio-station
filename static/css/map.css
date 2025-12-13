@@ -19,10 +19,28 @@ html, body {
     overflow-x: hidden;
     padding-top: 5px;
 }
-
+a{
+    text-decoration: none;
+}
 h2, h3{
     padding-left: 10pt;
 }
 .layer-label{
     color: #ffffff;
+}
+
+.sidenav-top{
+    background-color: #3e3e3e;
+    border: none;
+    color: white;
+    padding: 7px 14px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+.sidenav-top:active{
+    background-color: #666666;
 }
