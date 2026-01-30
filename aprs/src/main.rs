@@ -1,4 +1,4 @@
-use aprs_parser::{self, AprsPacket, Callsign, Timestamp};
+use aprs_parser::{self, AprsPacket, Timestamp};
 use ax25::frame::Ax25Frame;
 use chrono;
 use chrono::{DateTime, Datelike, SecondsFormat, TimeZone, Utc};
@@ -9,9 +9,11 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::result::Result;
+use tokio::time::sleep;
 use std::time::{Duration, Instant};
 use tokio;
-
+use clap::{self, Parser};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 fn serialize_time<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -64,16 +66,49 @@ fn parse_timestamp(timestamp: Timestamp) -> DateTime<Utc> {
     }
 }
 
+// fn parse_symbol(table: char, code:char) -> Result<String, Box<dyn Error>> {
+//     match table { '/' => {
+//         match code {
+//             '\'' => {}
+//             _ => {}
+//         }
+//     }
+//         _ => {}
+//     }
+// }
+#[derive(Parser, Debug)]
+struct Args{
+    #[clap(short='u', long, default_value="127.0.0.1:8343")]
+    url: String,
+    #[clap(short='p', long, default_value="../static/stations.json")]
+    path: String,
+}
+async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
+    let mut tnc;
+    loop {
+        tnc = Tnc::connect_tcp(&url).await;
+        match tnc {
+            Ok(_) => {
+                return tnc.unwrap();
+            }
+            Err(_) => {}
+        }
+        sleep(Duration::from_millis(250)).await;
+    }
+}
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut tnc = Tnc::connect_tcp("localhost:8001").await?;
+    let args = Args::parse();
+    let mut tnc = try_connect(args.url).await;
     let mut stations: HashMap<String, AprsData> = HashMap::new();
     let mut last_cleanup = Instant::now();
     let mut last_write = Instant::now();
     let write_interval = Duration::from_secs(1);
     let cleanup_interval = Duration::from_secs(15);
     let evict_time = chrono::TimeDelta::seconds(15);
+
     let json_file = "../static/stations.json";
+
     loop {
         match tnc.read_frame().await {
             Ok((_port, data)) => match AprsPacket::decode_ax25(data.as_slice()) {
@@ -81,6 +116,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     aprs_parser::AprsData::Position(position) => {
                         let lat = position.latitude.value();
                         let lon = position.longitude.value();
+                        let symbol = position.symbol_code;
+                        println!("symbol = {:#?}", symbol);
+                        println!("symbol_table = {:#?}", position.symbol_table);
                         let name = packet.from.to_string();
                         let packet = Ax25Frame::from_bytes(data.as_slice())?.to_string();
                         if stations.contains_key(&name) {
@@ -107,7 +145,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 },
                             );
                         }
-                        println!("{:?}", Ax25Frame::from_bytes(data.as_slice())?.to_string());
+                        // println!("{:?}", Ax25Frame::from_bytes(data.as_slice())?.to_string());
                         let list = stations.values().cloned().collect::<Vec<AprsData>>();
                         println!("{:?}", list);
                         let json = serde_json::to_string(&list)?;
@@ -119,7 +157,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 },
                 _ => break,
             },
-            Err(_) => {}
+            Err(_) => {
+                break;
+            }
         }
         if last_cleanup.elapsed() > cleanup_interval {
             stations = cleanup(stations, evict_time).await?;
