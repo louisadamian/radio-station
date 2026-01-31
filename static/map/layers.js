@@ -29,10 +29,29 @@ function createLayers(){
 
     }));
     layers.push(new ol.layer.Vector({
+        name: 'firs',
+        title: 'FIRs',
+        type: 'overlay',
+        opacity: 1,
+        visible: false,
+        zIndex: 3,
+        source: new ol.source.Vector({
+            url: "https://gist.githubusercontent.com/LC43/5d6a009d83172d308a01a1c864b71e68/raw/cb57c489cb4dd60c0143ca41e682df0269cead14/fir.geojson",
+            format: new ol.format.GeoJSON(),
+            attributions: 'FIR boundaries from <a href="https://gist.github.com/LC43/5d6a009d83172d308a01a1c864b71e68">LC43</a> on github.'
+        }),
+        style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: [0, 74, 193, 0.9],
+                width: 3
+            }),
+        }),
+    }));
+    layers.push(new ol.layer.Vector({
         type: 'overlay',
         title: 'US A2A Refueling',
         name: 'us-a2a',
-        zIndex: 10,
+        zIndex: 2,
         visible: false,
         source: new ol.source.Vector({
             url: '/geojson/US_A2A_refueling.geojson',

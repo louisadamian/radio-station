@@ -3,9 +3,7 @@ use chrono::{DateTime, Datelike, SecondsFormat, Timelike, Utc};
 use clap::Parser;
 use futures_util::StreamExt;
 use log;
-use metar::{
-    CloudLayer, CloudType, Metar, Pressure, VertVisibility, Visibility, WindDirection, WindSpeed,
-};
+use metar::{CloudLayer, CloudType, Data, Metar, Pressure, VerticalVisibility, Visibility, Wind, WindDirection, WindSpeed};
 use reqwest;
 use serde::Serialize;
 use std::cmp::PartialEq;
@@ -14,7 +12,6 @@ use std::fs::{self, DirEntry, File};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
-use std::str::FromStr;
 use tokio::io::AsyncWriteExt;
 use toml;
 
@@ -45,70 +42,82 @@ fn inhg_to_hpa(press: f64) -> f64 {
 fn hpa_to_inhg(press: f64) -> f64 {
     press / 33.86388640341
 }
-
+fn kph_to_mps(speed: f64) -> f64 {
+    speed/3.6f64
+}
 fn parse_visibility(vis: Visibility, units: DisplayUnits) -> Option<f64> {
     if units != DisplayUnits::Metric {
         match vis {
             Visibility::CAVOK => None,
-            Visibility::Metres(m) => Option::from(m_to_mi(m as f64)),
-            Visibility::StatuteMiles(mi) => Option::from(mi as f64),
+            Visibility::Metres(m) => Some(m_to_mi(m as f64)),
+            Visibility::StatuteMiles(mi) => Some(mi as f64),
         }
     } else {
         match vis {
             Visibility::CAVOK => None,
-            Visibility::Metres(m) => Option::from(m_to_mi(m as f64)),
-            Visibility::StatuteMiles(mi) => Option::from(f64::from(mi)),
+            Visibility::Metres(m) => Some(m_to_mi(m as f64)),
+            Visibility::StatuteMiles(mi) => Some(f64::from(mi)),
         }
     }
 }
-fn parse_speed_kts(wind_speed: WindSpeed) -> f64 {
+fn parse_speed_kts(wind_speed: WindSpeed) -> (f64, Option<f64>) {
     match wind_speed {
-        WindSpeed::Calm => 0.0,
-        WindSpeed::Knot(k) => f64::from(k),
-        WindSpeed::MetresPerSecond(mps) => mps_to_kts(f64::from(mps)),
-        WindSpeed::KilometresPerHour(kph) => kph_to_kts(f64::from(kph)),
+        WindSpeed::Knots { speed, gusting } => (
+            f64::from(speed.unwrap()),
+            match gusting {
+                Some(gust) => Some(f64::from(gust.unwrap())),
+                None => None,
+            },
+        ),
+        WindSpeed::MetresPerSecond { speed, gusting } => (
+            mps_to_kts(f64::from(speed.unwrap())),
+            match gusting {
+                Some(gust) => Some(mps_to_kts(f64::from(gust.unwrap()))),
+                None => None,
+            },
+        ),
+        WindSpeed::KilometresPerHour { speed, gusting } => (
+            kph_to_kts(f64::from(speed.unwrap())),
+            match gusting {
+                Some(gust) => Some(kph_to_kts(f64::from(gust.unwrap()))),
+                None => None,
+            },
+        ),
+        WindSpeed::Greater => (100f64, None),
     }
 }
-fn parse_speed_kph(wind_speed: WindSpeed) -> f64 {
-    match wind_speed {
-        WindSpeed::Calm => 0.0,
-        WindSpeed::Knot(kts) => kts_to_kph(f64::from(kts)),
-        WindSpeed::MetresPerSecond(mps) => mps_to_kph(f64::from(mps)),
-        WindSpeed::KilometresPerHour(kph) => f64::from(kph),
-    }
-}
+
+
 fn parse_pressure_hpa(press: Pressure) -> f64 {
     match press {
-        Pressure::Hectopascals(hpa) => hpa as f64,
-        Pressure::InchesOfMercury(inhg) => inhg_to_hpa(f64::from(inhg)).round(),
+        Pressure::Hectopascals(hpa) => f64::from(hpa.unwrap()),
+        Pressure::InchesOfMercury(inhg) => inhg_to_hpa(f64::from(inhg.unwrap())).round(),
     }
 }
 fn parse_pressure_inhg(press: Pressure) -> f64 {
     match press {
-        Pressure::InchesOfMercury(inhg) => inhg as f64,
-        Pressure::Hectopascals(hpa) => hpa_to_inhg(f64::from(hpa)),
+        Pressure::InchesOfMercury(inhg) => f64::from(inhg.unwrap()),
+        Pressure::Hectopascals(hpa) => hpa_to_inhg(f64::from(hpa.unwrap())),
     }
 }
 fn parse_wind_dir(dir: WindDirection) -> Option<f64> {
     match dir {
-        WindDirection::Heading(h) => Option::from(f64::from(h)),
+        WindDirection::Heading(h) => Some(f64::from(h.unwrap())),
         WindDirection::Variable => None,
-        WindDirection::Above => None,
     }
 }
 fn parse_wind_status(dir: WindDirection) -> Option<String> {
     match dir {
         WindDirection::Heading(_) => None,
-        WindDirection::Variable => Option::from("variable".to_string()),
-        WindDirection::Above => Option::from("above".to_string()),
+        WindDirection::Variable => Some("variable".to_string()),
     }
 }
-fn parse_vert_visibility(vert_visibility: Option<VertVisibility>) -> Option<u32> {
+fn parse_vert_visibility(vert_visibility: Option<VerticalVisibility>) -> Option<u32> {
     match vert_visibility {
         None => None,
         Some(vis) => match vis {
-            VertVisibility::Distance(vis) => Option::from(vis),
-            VertVisibility::ReducedByUnknownAmount => None,
+            VerticalVisibility::Distance(vis) => Some(vis),
+            VerticalVisibility::ReducedByUnknownAmount => None,
         },
     }
 }
@@ -126,7 +135,7 @@ fn parse_clouds(cloud_layers: Vec<CloudLayer>, units: DisplayUnits) -> Vec<Cloud
         let s: String;
         let cloud_type: CloudType;
         let cloud_height;
-        match cloud.clone() {
+        match cloud.density {
             CloudLayer::Few(cl_type, height) => {
                 s = "few ".to_string();
                 cloud_type = cl_type;
@@ -271,6 +280,10 @@ fn parse_metar_brief(cur_metar: Metar, units: DisplayUnits) -> String {
         }
     }
     report += "winds ";
+    match cur_metar.wind {
+        Wind::Calm => {}
+        Wind::Present { .. } => {}
+    }
     if units == DisplayUnits::Nautical || units == DisplayUnits::Aviation {
         let speed = parse_speed_kts(cur_metar.wind.speed.unwrap().clone());
         if speed == 0.0 {
@@ -289,7 +302,7 @@ fn parse_metar_brief(cur_metar: Metar, units: DisplayUnits) -> String {
             _ => {}
         }
     } else {
-        let speed = parse_speed_kph(cur_metar.wind.speed.unwrap().clone());
+        let (speed,gust) = parse_speed_kts();
         if speed == 0.0 {
             report += "calm "
         } else {
