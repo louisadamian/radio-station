@@ -9,16 +9,21 @@
 <div id="nav-bar">
 
 </div>
-<h1>Radio Station</h1>
-<div id="links">
-    <a class="link" href="/adsb">ADS-B</a>
-    <a class="link" href="/weather">Weather</a>
+<div class="topnav">
+    <a class="link" href="/">Radio Station</a>
+    <a class="#active" href="#weather">Weather</a>
     <a class="link" href="/map">Map</a>
 </div>
-<div id="stats">
-    <p>ADS-B: current positions: 10</p>
-    <p>APRS: current positions: 2</p>
-    <p id="weather-report">Weather: 24ºF 🌨️ light snow</p>
+<div class="body">
+    <div id="position-stats" class="column">
+        <p id="adsb-pos">current ADS-B positions: 10</p>
+        <p id="aprs-pos">current APRS peers: 2</p>
+        <p id ="ais-pos">current AIS positions: 3</p>
+        <p id="weather-report">Weather: 24ºF 🌨️ light snow</p>
+    </div>
+    <div class="column">
+        <p>Time: 00:00:00Z</p>
+    </div>
 </div>
 <script src="/js/weather.js"></script>
 </body>

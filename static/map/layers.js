@@ -172,4 +172,36 @@ async function loadStations(){
         map.addLayer(vectorLayer);
 }
 
+const aircraftVectors= new ol.source.Vector();
+
+async function loadAircraftVectors(){
+    const response = await fetch("aircraft.json")
+    const json_aircraft = await response.json();
+    console.log(json_aircraft);
+    const aircrafts = await json_aircraft.aircraft;
+    console.log("aircraft", aircrafts);
+    aircrafts.forEach(aircraft => {
+        console.log(aircraft);
+        const point = new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat]));
+        const feature = new ol.Feature({
+            geometry: point,
+        });
+        aircraftVectors.addFeature(feature);
+    })
+    const wxStyle = new ol.style.Style({
+        image: new ol.style.Circle({
+            radius: 7,
+            stroke: new ol.style.Stroke({ color: 'rgba(0, 200, 128, 1)', width: 1 })
+        })
+    });
+
+    const aircraftLayer = new ol.layer.Vector({
+        visible: true,
+        source: vectorSource,
+        style: wxStyle
+    });
+    map.addLayer(aircraftLayer);
+}
+
+loadAircraftVectors()
 loadStations();

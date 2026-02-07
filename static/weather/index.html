@@ -13,11 +13,12 @@
     </head>
     <body>
         <div class="topnav">
-            <a class="link" href="/">Home</a>
+            <a class="link" href="/">Radio Station</a>
             <a class="#active" href="#weather">Weather</a>
+            <a class="link" href="/map">Map</a>
+        </div>
             <h1 class="title">Latest GOES Imagery</h1>
             <h3 class="title-weather">Weather: 24&deg;F light snow 🌨️</h3>
-<!--            <div class="custom-select" >-->
                 <label>
                     <select id="goes-select" onchange="onImgSelect()">
                         <option value="geocolor">GeoColor</option>
@@ -26,11 +27,7 @@
                         <option value="firetemperature-rgb">FireTemperature</option>
                     </select>
                 </label>
-        </div>
-<!--            </div>-->
-<!--            <div class="img">-->
                 <image class="image" id="goesImg" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/CONUS/GEOCOLOR/1250x750.jpg" style="width:80%"></image>
-<!--            </div>-->
             <script src="/weather/selection.js"></script>
             <script src="/weather/goes.js"></script>
         </body>

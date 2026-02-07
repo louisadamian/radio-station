@@ -2,8 +2,10 @@
 deps="nginx"
 CHOICES=$(whiptail --title "Install Radio Station Options" \
   --checklist "Choose something" 10 40 4 \
-  "ADS-B" "Airplane tracking" OFF \
-  "GOES" "NOAA Satellite Weather" OFF \
+  "ADS-B" "Aircraft tracking" OFF \
+  "APRS" "Amateur radio Packets" OFF\
+  "AIS" "Ship tracking" OFF\
+  "GOES" "NOAA Satellite Weather Imagery" OFF \
    3>&1 1>&2 2>&3)
 exitstatus=$?
 if [ $exitstatus != 0 ]; then
@@ -15,9 +17,14 @@ if [[  -z "${#CHOICES[@]}" ]]; then
 fi
 ADSB=false
 GOES=false
+APRS=false
 mkdir -p "$HOME/dev" && cd "$HOME/dev" || exit
 for CHOICE in $CHOICES; do
     case "$CHOICE" in
+    "APRS")
+      APRS=true
+      deps="$deps direwolf"
+      ;;
     "ADS-B")
         ADSB=true
         wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.2_all.deb
@@ -48,5 +55,7 @@ if $ADSB; then
 fi
 if $GOES; then
     echo "configuring goes-tools"
-
+fi
+if $APRS; then
+  echo "configuring APRS"
 fi
