@@ -76,8 +76,8 @@ async fn ws(req: HttpRequest, body: web::Payload) -> Result<HttpResponse, actix_
 }
 
 pub async fn web() -> std::io::Result<()> {
-    let port: u16 = 8000;
-    println!("starting server at http://localhost:{}", port);
+    let port: u16 = 9000;
+    println!("starting server at http://0.0.0.0:{}", port);
     HttpServer::new(|| {
         App::new()
             .route("/ws", web::get().to(ws))
@@ -86,8 +86,10 @@ pub async fn web() -> std::io::Result<()> {
             .service(Files::new("/", "../static").index_file("index.html"))
             .service(Files::new("/data", "../data"))
             .wrap(middleware::DefaultHeaders::new().add(("Cache-Control", "no-cache")))
+
+
     })
-    .bind(("127.0.0.1", port))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }

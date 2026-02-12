@@ -24,6 +24,7 @@ where
 struct AprsData {
     callsign: String,
     packet: String,
+    symbol: String,
     lat: f64,
     lon: f64,
     #[serde(serialize_with = "serialize_time")]
@@ -78,7 +79,7 @@ fn parse_timestamp(timestamp: Timestamp) -> DateTime<Utc> {
 // }
 #[derive(Parser, Debug)]
 struct Args{
-    #[clap(short='u', long, default_value="127.0.0.1:8343")]
+    #[clap(short='u', long, default_value="127.0.0.1:8001")]
     url: String,
     #[clap(short='p', long, default_value="../static/stations.json")]
     path: String,
@@ -99,6 +100,7 @@ async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+    println!("connecting to {}", args.url);
     let mut tnc = try_connect(args.url).await;
     let mut stations: HashMap<String, AprsData> = HashMap::new();
     let mut last_cleanup = Instant::now();
@@ -136,6 +138,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 AprsData {
                                     callsign: name,
                                     packet,
+                                    symbol: format!("{}{}",position.symbol_table, position.symbol_code),
                                     lat,
                                     lon,
                                     time: match position.timestamp {

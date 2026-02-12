@@ -147,29 +147,65 @@ async function loadStations(){
     console.log("stations", stations);
     stations.forEach(station => {
             console.log(station.callsign);
-            const point = new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat]));
+            console.log(station.symbol)
+            const iconStyle = new ol.style.Style({
+                image: getSymbol(station.symbol),
+            })
             const feature = new ol.Feature({
-                geometry: point,
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat])),
                 callsign: station.callsign,
                 comment: station.packet,
                 timestamp: station.time,
+                style: iconStyle
             });
             vectorSource.addFeature(feature);
         })
-        const wxStyle = new ol.style.Style({
-            image: new ol.style.Circle({
-                radius: 7,
-                fill: new ol.style.Fill({ color: 'rgba(18,42,255,0.8)' }),
-                stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 128, 1)', width: 1 })
-            })
-        });
+        // const wxStyle = new ol.style.Style({
+        //     image: new ol.style.Circle({
+        //         radius: 7,
+        //         fill: new ol.style.Fill({ color: 'rgba(18,42,255,0.8)' }),
+        //         stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 128, 1)', width: 1 })
+        //     })
+        // });
 
         const vectorLayer = new ol.layer.Vector({
             visible: true,
             source: vectorSource,
-            style: wxStyle
+            // style: wxStyle
         });
         map.addLayer(vectorLayer);
 }
 
+const aircraftVectors= new ol.source.Vector();
+
+async function loadAircraftVectors(){
+    const response = await fetch("aircraft.json")
+    const json_aircraft = await response.json();
+    console.log(json_aircraft);
+    const aircrafts = await json_aircraft.aircraft;
+    console.log("aircraft", aircrafts);
+    aircrafts.forEach(aircraft => {
+        console.log(aircraft);
+        const point = new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat]));
+        const feature = new ol.Feature({
+            geometry: point,
+        });
+        aircraftVectors.addFeature(feature);
+    })
+    const wxStyle = new ol.style.Style({
+        image: new ol.style.Circle({
+            radius: 7,
+            stroke: new ol.style.Stroke({ color: 'rgba(0, 200, 128, 1)', width: 1 })
+        })
+    });
+
+    const aircraftLayer = new ol.layer.Vector({
+        visible: true,
+        source: vectorSource,
+        style: wxStyle
+    });
+    map.addLayer(aircraftLayer);
+}
+
+loadAircraftVectors()
 loadStations();
