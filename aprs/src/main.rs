@@ -128,6 +128,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             s.lat = lat;
                             s.lon = lon;
                             s.packet = packet;
+                            s.symbol=  format!("{}{}",position.symbol_table, position.symbol_code);
                             s.time = match position.timestamp {
                                 Some(ts) => parse_timestamp(ts),
                                 None => Utc::now(),

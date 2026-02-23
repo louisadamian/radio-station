@@ -1,7 +1,7 @@
 import random
 import socket
 from time import sleep
-from datetime import datetime,timezone
+from datetime import datetime, timezone
 import aprs
 TCP_IP = '0.0.0.0'
 TCP_PORT = 8001
@@ -53,12 +53,6 @@ frames = [aprs.APRSFrame.ui(
     info=("@" + datetime.now(tz=timezone.utc).strftime("%d%H%M") + "z4221.78N/07107.54W/#O095/041/A=020729").encode(
         'ascii')
 ),
-#     aprs.APRSFrame.ui(
-#     destination="KC1QXQ",
-#     source="KD4AAA-4",
-#     path=["WIDE2-2"],
-#     info=info,
-# )
 ]
 
 
@@ -92,9 +86,7 @@ def run_kiss_server():
                 connection.close()
                 break
             finally:
-                connection.close()
-                print(f"Connection closed for {client_address}")
-            sleep(.5)
+                sleep(.5)
         print("done")
 if __name__ == '__main__':
     run_kiss_server()

@@ -146,34 +146,23 @@ async function loadStations(){
     const stations = await response.json();
     console.log("stations", stations);
     stations.forEach(station => {
-            console.log(station.callsign);
-            console.log(station.symbol)
-            const iconStyle = new ol.style.Style({
-                image: getSymbol(station.symbol),
-            })
-            const feature = new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat])),
-                callsign: station.callsign,
-                comment: station.packet,
-                timestamp: station.time,
-                style: iconStyle
-            });
-            vectorSource.addFeature(feature);
-        })
-        // const wxStyle = new ol.style.Style({
-        //     image: new ol.style.Circle({
-        //         radius: 7,
-        //         fill: new ol.style.Fill({ color: 'rgba(18,42,255,0.8)' }),
-        //         stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 128, 1)', width: 1 })
-        //     })
-        // });
-
-        const vectorLayer = new ol.layer.Vector({
-            visible: true,
-            source: vectorSource,
-            // style: wxStyle
+        console.log(station.callsign);
+        console.log(station.symbol)
+        const iconStyle =getSymbol(station.symbol);
+        const feature = new ol.Feature({
+            geometry: new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat])),
+            callsign: station.callsign,
+            comment: station.packet,
+            timestamp: station.time,
         });
-        map.addLayer(vectorLayer);
+        feature.setStyle(iconStyle)
+        vectorSource.addFeature(feature);
+    })
+    const vectorLayer = new ol.layer.Vector({
+        visible: true,
+        source: vectorSource,
+    });
+    map.addLayer(vectorLayer);
 }
 
 const aircraftVectors= new ol.source.Vector();
