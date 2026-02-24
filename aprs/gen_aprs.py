@@ -33,24 +33,25 @@ def encode_frame(port, command, data):
 
 
 
-info=("@" +datetime.now(tz=timezone.utc).strftime("%d%H%M")+r"z4041.48N/07490.96W/&O095/041/A=020729").encode('ascii')
-frames = [aprs.APRSFrame.ui(
-    destination="KD4AAA-10",
+info=("/" +datetime.now(tz=timezone.utc).strftime("%d%H%M")+r"z4041.48N/07490.96W&O095/041/A=020729").encode('ascii')
+frames = [
+aprs.APRSFrame.ui(
+    destination="APRS",
     source="KD4AAA-1",
     path=["WIDE2-2"],
-    info=("@" + datetime.now(tz=timezone.utc).strftime("%d%H%M") + r"z4041.48N/07400.95W/#O095/041/A=020729").encode(
+    info=("/" + datetime.now(tz=timezone.utc).strftime("%d%H%M") + r"z4041.48N/07400.95W#O095/041/A=020729").encode(
         'ascii')
 ), aprs.APRSFrame.ui(
-    destination="KC1QXQ-10",
+    destination="APRS",
     source="KC1QXQ-1",
     path=["WIDE2-2"],
-    info=("@" + datetime.now(tz=timezone.utc).strftime("%d%H%M") + r"z4221.78N/07107.54W/#O095/041/A=020729").encode(
+    info=("/" + datetime.now(tz=timezone.utc).strftime("%d%H%M") + r"z4221.78N/07107.54WWO095/041/A=020729").encode(
         'ascii')
 ), aprs.APRSFrame.ui(
-    destination="KC1QXQ",
+    destination="APRS",
     source="KD4AAA-3",
     path=["WIDE2-2"],
-    info=("@" + datetime.now(tz=timezone.utc).strftime("%d%H%M") + "z4221.78N/07107.54W/#O095/041/A=020729").encode(
+    info=("/" + datetime.now(tz=timezone.utc).strftime("%d%H%M") + r"z4221.78N/07107.54W#O095/041/A=020729").encode(
         'ascii')
 ),
 ]

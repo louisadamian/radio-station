@@ -1,7 +1,6 @@
 use aprs_parser::{self, AprsPacket, Timestamp};
 use ax25::frame::Ax25Frame;
-use chrono;
-use chrono::{DateTime, Datelike, SecondsFormat, TimeZone, Utc};
+use chrono::{self, DateTime, Datelike, SecondsFormat, TimeZone, Utc};
 use kiss_tnc::Tnc;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -14,6 +13,7 @@ use std::time::{Duration, Instant};
 use tokio;
 use clap::{self, Parser};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use log;
 fn serialize_time<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -35,13 +35,11 @@ async fn cleanup(
     mut dict: HashMap<String, AprsData>,
     evict_time: chrono::TimeDelta,
 ) -> Result<HashMap<String, AprsData>, Box<dyn Error>> {
-    println!("Cleaning up...");
     for (k, v) in dict.clone() {
         if k == "KD4AAA-1" {
-            println!("Cleaning up {:?}", k);
         }
         if Utc::now() - v.time > evict_time {
-            println!("removed {:}", k);
+            log::info!("removed {:}", k);
             dict.remove(&k);
         }
     }
@@ -67,16 +65,6 @@ fn parse_timestamp(timestamp: Timestamp) -> DateTime<Utc> {
     }
 }
 
-// fn parse_symbol(table: char, code:char) -> Result<String, Box<dyn Error>> {
-//     match table { '/' => {
-//         match code {
-//             '\'' => {}
-//             _ => {}
-//         }
-//     }
-//         _ => {}
-//     }
-// }
 #[derive(Parser, Debug)]
 struct Args{
     #[clap(short='u', long, default_value="127.0.0.1:8001")]
@@ -118,11 +106,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     aprs_parser::AprsData::Position(position) => {
                         let lat = position.latitude.value();
                         let lon = position.longitude.value();
-                        let symbol = position.symbol_code;
-                        println!("symbol = {:#?}", symbol);
-                        println!("symbol_table = {:#?}", position.symbol_table);
                         let name = packet.from.to_string();
                         let packet = Ax25Frame::from_bytes(data.as_slice())?.to_string();
+                        log::info!("{:?}", packet);
                         if stations.contains_key(&name) {
                             let s = stations.get_mut(&name).unwrap();
                             s.lat = lat;
@@ -149,9 +135,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 },
                             );
                         }
-                        // println!("{:?}", Ax25Frame::from_bytes(data.as_slice())?.to_string());
                         let list = stations.values().cloned().collect::<Vec<AprsData>>();
-                        println!("{:?}", list);
                         let json = serde_json::to_string(&list)?;
                         let mut f = File::create(json_file)?;
                         f.write_all(json.as_bytes())?;
