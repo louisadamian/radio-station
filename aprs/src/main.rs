@@ -66,10 +66,11 @@ fn parse_timestamp(timestamp: Timestamp) -> DateTime<Utc> {
 }
 
 #[derive(Parser, Debug)]
+#[command(name="APRS parser", version=clap::crate_version!(), about="parses APRS data from KISS over TCP connection and adds data to json file", long_about = None)]
 struct Args{
-    #[clap(short='u', long, default_value="127.0.0.1:8001")]
+    #[clap(short='a', long="address", default_value="127.0.0.1:8001")]
     url: String,
-    #[clap(short='p', long, default_value="../static/stations.json")]
+    #[clap(short='p', default_value="../static/stations.json")]
     path: String,
 }
 async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
@@ -163,6 +164,5 @@ async fn main() -> Result<(), Box<dyn Error>> {
             last_write = Instant::now();
         }
     }
-    println!("caught error. exiting");
     Ok(())
 }
