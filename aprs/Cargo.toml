@@ -1,7 +1,10 @@
 [package]
 name = "aprs"
-version = "0.1.0"
+authors = ["Louis Adamian"]
+description = "writes APRS packets received from KISS over TCP to a JSON file for serving to Radio Station"
+version = "0.1.0-alpha.1"
 edition = "2024"
+license = "GPL-3"
 
 [dependencies]
 aprs-parser = "0.4.2"

@@ -1,0 +1,19 @@
+[workspace]
+name="radio-station"
+resolver = "3"
+members = ["aprs", "radio-station"]
+default-members = ["aprs", "radio-station"]
+[workspace.dev-dependencies]
+cargo-deb = "3.6.3"
+[workspace.package]
+edition = "2024"
+license = "GPL-3"
+authors = ["Louis Adamian"]
+repository = "https://github.com/louisadamian/radio-station"
+[workspace.dependencies]
+clap = { version = "4.5.60", features = ["derive", "cargo"] }
+[workspace.metadata.deb]
+depends="$auto"
+assets =[
+    { source = "README.md", dest = "usr/share/doc/radio-station/README", mode = "644"},
+]
