@@ -6,6 +6,7 @@ default-run = "radio-station"
 authors = ["Louis Adamian"]
 description = "writes APRS packets received from KISS over TCP to a JSON file for serving to Radio Station"
 license = "GPL-3"
+
 [dependencies]
 actix-files = "0.6.6"
 actix-web = "4.10.2"
@@ -17,10 +18,11 @@ serde = { version = "1.0.219", features = ["derive"] }
 toml = "0.9.8"
 metar = "0.9.3 "
 log = "0.4.27"
+reqwest = { version = "0.12.15", features = ["stream"] }
 tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
 tracing = "0.1.41"
 bytestring = "1.4.0"
-reqwest = { version = "0.13.1", features = ["stream"] }
+
 
 [features]
 default=[]

@@ -1,7 +1,6 @@
-use aprs_parser::{self, AprsPacket, Callsign, Timestamp};
+use aprs_parser::{self, AprsPacket, Timestamp};
 use ax25::frame::Ax25Frame;
-use chrono;
-use chrono::{DateTime, Datelike, SecondsFormat, TimeZone, Utc};
+use chrono::{self, DateTime, Datelike, SecondsFormat, TimeZone, Utc};
 use kiss_tnc::Tnc;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -9,9 +8,11 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::result::Result;
+use tokio::time::sleep;
 use std::time::{Duration, Instant};
 use tokio;
-
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use log;
 fn serialize_time<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -22,6 +23,7 @@ where
 struct AprsData {
     callsign: String,
     packet: String,
+    symbol: String,
     lat: f64,
     lon: f64,
     #[serde(serialize_with = "serialize_time")]
@@ -32,13 +34,11 @@ async fn cleanup(
     mut dict: HashMap<String, AprsData>,
     evict_time: chrono::TimeDelta,
 ) -> Result<HashMap<String, AprsData>, Box<dyn Error>> {
-    println!("Cleaning up...");
     for (k, v) in dict.clone() {
         if k == "KD4AAA-1" {
-            println!("Cleaning up {:?}", k);
         }
         if Utc::now() - v.time > evict_time {
-            println!("removed {:}", k);
+            log::info!("removed {:}", k);
             dict.remove(&k);
         }
     }
@@ -64,16 +64,30 @@ fn parse_timestamp(timestamp: Timestamp) -> DateTime<Utc> {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let mut tnc = Tnc::connect_tcp("localhost:8001").await?;
+
+async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
+    let mut tnc;
+    loop {
+        tnc = Tnc::connect_tcp(&url).await;
+        match tnc {
+            Ok(_) => {
+                return tnc.unwrap();
+            }
+            Err(_) => {}
+        }
+        sleep(Duration::from_millis(250)).await;
+    }
+}
+
+pub async fn write_aprs(json_path: String, address:String)-> Result<(), Box<dyn Error>> {
+    let mut tnc = try_connect(address).await;
     let mut stations: HashMap<String, AprsData> = HashMap::new();
     let mut last_cleanup = Instant::now();
     let mut last_write = Instant::now();
     let write_interval = Duration::from_secs(1);
     let cleanup_interval = Duration::from_secs(15);
     let evict_time = chrono::TimeDelta::seconds(15);
-    let json_file = "../static/stations.json";
+
     loop {
         match tnc.read_frame().await {
             Ok((_port, data)) => match AprsPacket::decode_ax25(data.as_slice()) {
@@ -83,11 +97,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         let lon = position.longitude.value();
                         let name = packet.from.to_string();
                         let packet = Ax25Frame::from_bytes(data.as_slice())?.to_string();
+                        log::info!("{:?}", packet);
                         if stations.contains_key(&name) {
                             let s = stations.get_mut(&name).unwrap();
                             s.lat = lat;
                             s.lon = lon;
                             s.packet = packet;
+                            s.symbol=  format!("{}{}",position.symbol_table, position.symbol_code);
                             s.time = match position.timestamp {
                                 Some(ts) => parse_timestamp(ts),
                                 None => Utc::now(),
@@ -98,6 +114,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 AprsData {
                                     callsign: name,
                                     packet,
+                                    symbol: format!("{}{}",position.symbol_table, position.symbol_code),
                                     lat,
                                     lon,
                                     time: match position.timestamp {
@@ -107,11 +124,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 },
                             );
                         }
-                        println!("{:?}", Ax25Frame::from_bytes(data.as_slice())?.to_string());
                         let list = stations.values().cloned().collect::<Vec<AprsData>>();
-                        println!("{:?}", list);
                         let json = serde_json::to_string(&list)?;
-                        let mut f = File::create(json_file)?;
+                        let mut f = File::create(json_path.clone())?;
                         f.write_all(json.as_bytes())?;
                         f.sync_all()?;
                     }
@@ -119,7 +134,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 },
                 _ => break,
             },
-            Err(_) => {}
+            Err(_) => {
+                break;
+            }
         }
         if last_cleanup.elapsed() > cleanup_interval {
             stations = cleanup(stations, evict_time).await?;
@@ -129,12 +146,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let json = serde_json::to_string_pretty(
                 &stations.values().cloned().collect::<Vec<AprsData>>(),
             )?;
-            let mut f = File::create(json_file)?;
+            let mut f = File::create(json_path.clone())?;
             f.write_all(json.as_bytes())?;
             f.sync_all()?;
             last_write = Instant::now();
         }
     }
-    println!("caught error. exiting");
     Ok(())
 }

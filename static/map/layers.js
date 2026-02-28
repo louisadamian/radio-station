@@ -29,10 +29,29 @@ function createLayers(){
 
     }));
     layers.push(new ol.layer.Vector({
+        name: 'firs',
+        title: 'FIRs',
+        type: 'overlay',
+        opacity: 1,
+        visible: false,
+        zIndex: 3,
+        source: new ol.source.Vector({
+            url: "https://gist.githubusercontent.com/LC43/5d6a009d83172d308a01a1c864b71e68/raw/cb57c489cb4dd60c0143ca41e682df0269cead14/fir.geojson",
+            format: new ol.format.GeoJSON(),
+            attributions: 'FIR boundaries from <a href="https://gist.github.com/LC43/5d6a009d83172d308a01a1c864b71e68">LC43</a> on github.'
+        }),
+        style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: [0, 74, 193, 0.9],
+                width: 3
+            }),
+        }),
+    }));
+    layers.push(new ol.layer.Vector({
         type: 'overlay',
         title: 'US A2A Refueling',
         name: 'us-a2a',
-        zIndex: 10,
+        zIndex: 2,
         visible: false,
         source: new ol.source.Vector({
             url: '/geojson/US_A2A_refueling.geojson',
@@ -127,30 +146,55 @@ async function loadStations(){
     const stations = await response.json();
     console.log("stations", stations);
     stations.forEach(station => {
-            console.log(station.callsign);
-            const point = new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat]));
-            const feature = new ol.Feature({
-                geometry: point,
-                callsign: station.callsign,
-                comment: station.packet,
-                timestamp: station.time,
-            });
-            vectorSource.addFeature(feature);
-        })
-        const wxStyle = new ol.style.Style({
-            image: new ol.style.Circle({
-                radius: 7,
-                fill: new ol.style.Fill({ color: 'rgba(18,42,255,0.8)' }),
-                stroke: new ol.style.Stroke({ color: 'rgba(0, 0, 128, 1)', width: 1 })
-            })
+        console.log(station.callsign);
+        console.log(station.symbol)
+        const iconStyle =getSymbol(station.symbol);
+        const feature = new ol.Feature({
+            geometry: new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat])),
+            callsign: station.callsign,
+            comment: station.packet,
+            timestamp: station.time,
         });
-
-        const vectorLayer = new ol.layer.Vector({
-            visible: true,
-            source: vectorSource,
-            style: wxStyle
-        });
-        map.addLayer(vectorLayer);
+        feature.setStyle(iconStyle)
+        vectorSource.addFeature(feature);
+    })
+    const vectorLayer = new ol.layer.Vector({
+        visible: true,
+        source: vectorSource,
+    });
+    map.addLayer(vectorLayer);
 }
 
+const aircraftVectors= new ol.source.Vector();
+
+async function loadAircraftVectors(){
+    const response = await fetch("aircraft.json")
+    const json_aircraft = await response.json();
+    console.log(json_aircraft);
+    const aircrafts = await json_aircraft.aircraft;
+    console.log("aircraft", aircrafts);
+    aircrafts.forEach(aircraft => {
+        console.log(aircraft);
+        const point = new ol.geom.Point(ol.proj.fromLonLat([station.lon,station.lat]));
+        const feature = new ol.Feature({
+            geometry: point,
+        });
+        aircraftVectors.addFeature(feature);
+    })
+    const wxStyle = new ol.style.Style({
+        image: new ol.style.Circle({
+            radius: 7,
+            stroke: new ol.style.Stroke({ color: 'rgba(0, 200, 128, 1)', width: 1 })
+        })
+    });
+
+    const aircraftLayer = new ol.layer.Vector({
+        visible: true,
+        source: vectorSource,
+        style: wxStyle
+    });
+    map.addLayer(aircraftLayer);
+}
+
+loadAircraftVectors()
 loadStations();
