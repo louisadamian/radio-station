@@ -11,7 +11,6 @@ use std::result::Result;
 use tokio::time::sleep;
 use std::time::{Duration, Instant};
 use tokio;
-use clap::{self, Parser};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use log;
 fn serialize_time<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
@@ -65,14 +64,7 @@ fn parse_timestamp(timestamp: Timestamp) -> DateTime<Utc> {
     }
 }
 
-#[derive(Parser, Debug)]
-#[command(name="APRS parser", version=clap::crate_version!(), about="parses APRS data from KISS over TCP connection and adds data to json file", long_about = None)]
-struct Args{
-    #[clap(short='a', long="address", default_value="127.0.0.1:8001")]
-    url: String,
-    #[clap(short='p', default_value="../static/stations.json")]
-    path: String,
-}
+
 async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
     let mut tnc;
     loop {
@@ -86,19 +78,15 @@ async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
         sleep(Duration::from_millis(250)).await;
     }
 }
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let args = Args::parse();
-    println!("connecting to {}", args.url);
-    let mut tnc = try_connect(args.url).await;
+
+pub async fn write_aprs(json_path: String, address:String)-> Result<(), Box<dyn Error>> {
+    let mut tnc = try_connect(address).await;
     let mut stations: HashMap<String, AprsData> = HashMap::new();
     let mut last_cleanup = Instant::now();
     let mut last_write = Instant::now();
     let write_interval = Duration::from_secs(1);
     let cleanup_interval = Duration::from_secs(15);
     let evict_time = chrono::TimeDelta::seconds(15);
-
-    let json_file = "../static/stations.json";
 
     loop {
         match tnc.read_frame().await {
@@ -138,7 +126,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         }
                         let list = stations.values().cloned().collect::<Vec<AprsData>>();
                         let json = serde_json::to_string(&list)?;
-                        let mut f = File::create(json_file)?;
+                        let mut f = File::create(json_path.clone())?;
                         f.write_all(json.as_bytes())?;
                         f.sync_all()?;
                     }
@@ -158,7 +146,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let json = serde_json::to_string_pretty(
                 &stations.values().cloned().collect::<Vec<AprsData>>(),
             )?;
-            let mut f = File::create(json_file)?;
+            let mut f = File::create(json_path.clone())?;
             f.write_all(json.as_bytes())?;
             f.sync_all()?;
             last_write = Instant::now();

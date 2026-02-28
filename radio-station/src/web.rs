@@ -23,7 +23,7 @@ async fn ws(req: HttpRequest, body: web::Payload) -> Result<HttpResponse, actix_
         let mut wait = interval(Duration::from_secs(30));
         loop {
             wait.tick().await;
-            weather_brief_sender.send(messages[i].clone());
+            weather_brief_sender.send(messages[i].clone()).unwrap();
             i = (i + 1) % messages.len();
         }
     });
@@ -42,7 +42,7 @@ async fn ws(req: HttpRequest, body: web::Payload) -> Result<HttpResponse, actix_
                 session2
                     .text(ByteString::from(s))
                     .await
-                    .expect("TODO: panic message"); //.unwrap();
+                    .expect("TODO: panic message");
             }
             if session2.ping(b"").await.is_err() {
                 break;
