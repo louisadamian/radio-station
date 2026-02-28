@@ -86,8 +86,6 @@ pub async fn web() -> std::io::Result<()> {
             .service(Files::new("/", "../static").index_file("index.html"))
             .service(Files::new("/data", "../data"))
             .wrap(middleware::DefaultHeaders::new().add(("Cache-Control", "no-cache")))
-
-
     })
     .bind(("0.0.0.0", port))?
     .run()

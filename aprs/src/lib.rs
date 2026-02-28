@@ -2,17 +2,17 @@ use aprs_parser::{self, AprsPacket, Timestamp};
 use ax25::frame::Ax25Frame;
 use chrono::{self, DateTime, Datelike, SecondsFormat, TimeZone, Utc};
 use kiss_tnc::Tnc;
+use log;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::result::Result;
-use tokio::time::sleep;
 use std::time::{Duration, Instant};
 use tokio;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use log;
+use tokio::time::sleep;
 fn serialize_time<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -35,8 +35,7 @@ async fn cleanup(
     evict_time: chrono::TimeDelta,
 ) -> Result<HashMap<String, AprsData>, Box<dyn Error>> {
     for (k, v) in dict.clone() {
-        if k == "KD4AAA-1" {
-        }
+        if k == "KD4AAA-1" {}
         if Utc::now() - v.time > evict_time {
             log::info!("removed {:}", k);
             dict.remove(&k);
@@ -64,8 +63,7 @@ fn parse_timestamp(timestamp: Timestamp) -> DateTime<Utc> {
     }
 }
 
-
-async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
+async fn try_connect(url: String) -> Tnc<OwnedReadHalf, OwnedWriteHalf> {
     let mut tnc;
     loop {
         tnc = Tnc::connect_tcp(&url).await;
@@ -79,7 +77,7 @@ async fn try_connect(url: String) ->Tnc<OwnedReadHalf, OwnedWriteHalf>{
     }
 }
 
-pub async fn write_aprs(json_path: String, address:String)-> Result<(), Box<dyn Error>> {
+pub async fn write_aprs(json_path: String, address: String) -> Result<(), Box<dyn Error>> {
     let mut tnc = try_connect(address).await;
     let mut stations: HashMap<String, AprsData> = HashMap::new();
     let mut last_cleanup = Instant::now();
@@ -103,7 +101,7 @@ pub async fn write_aprs(json_path: String, address:String)-> Result<(), Box<dyn 
                             s.lat = lat;
                             s.lon = lon;
                             s.packet = packet;
-                            s.symbol=  format!("{}{}",position.symbol_table, position.symbol_code);
+                            s.symbol = format!("{}{}", position.symbol_table, position.symbol_code);
                             s.time = match position.timestamp {
                                 Some(ts) => parse_timestamp(ts),
                                 None => Utc::now(),
@@ -114,7 +112,10 @@ pub async fn write_aprs(json_path: String, address:String)-> Result<(), Box<dyn 
                                 AprsData {
                                     callsign: name,
                                     packet,
-                                    symbol: format!("{}{}",position.symbol_table, position.symbol_code),
+                                    symbol: format!(
+                                        "{}{}",
+                                        position.symbol_table, position.symbol_code
+                                    ),
                                     lat,
                                     lon,
                                     time: match position.timestamp {
